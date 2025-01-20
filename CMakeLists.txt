@@ -22,7 +22,7 @@ ELSE(OPENMP_FOUND AND WITH_OPENMP)
 ENDIF(OPENMP_FOUND AND WITH_OPENMP)
 
 # OpenCV
-#SET(OpenCV_DIR "E:/installer/opencv/build")
+SET(OpenCV_DIR "C:/libraries/opencv/build/")
 FIND_PACKAGE(OpenCV REQUIRED)
 
 ADD_SUBDIRECTORY(src)

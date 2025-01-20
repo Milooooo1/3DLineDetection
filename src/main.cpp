@@ -1,8 +1,14 @@
 #include <stdio.h>
 #include <fstream>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <cstdlib>
+#include <cmath>
 
 #include "LineDetection3D.h"
 #include "nanoflann.hpp"
+#include "cxxopts.hpp"
 #include "utils.h"
 #include "Timer.h"
 
@@ -154,24 +160,40 @@ void writeOutLinesObj(string filePath,
   file.close();
 }
 
-int main() 
+int main(int argc, char **argv)
 {
-	string fileData = "D://Facade//data.txt";
-	string fileOut  = "D://Facade//data";
+	cxxopts::Options options("LineDetection3D", "3D Line Detection Program");
+
+	options.add_options()
+		("input_file", "The input text file containing point cloud data", cxxopts::value<std::string>())
+		("output_folder", "The output folder to save the results", cxxopts::value<std::string>())
+		("k", "The number of nearest neighbors to use", cxxopts::value<int>()->default_value("20"));
+
+	auto result = options.parse(argc, argv);
+
+	if (!result.count("input_file") || !result.count("output_folder")) {
+		std::cerr << options.help() << std::endl;
+		return 1;
+	}
+
+	string fileData = result["input_file"].as<std::string>();
+	string fileOut = result["output_folder"].as<std::string>();
+	int k = result["k"].as<int>();
 
 	// read in data
-	PointCloud<double> pointData; 
-	readDataFromFile( fileData, pointData );
+	PointCloud<double> pointData;
+	readDataFromFile(fileData, pointData);
 
-	int k = 20;
 	LineDetection3D detector;
 	std::vector<PLANE> planes;
-	std::vector<std::vector<cv::Point3d> > lines;
+	std::vector<std::vector<cv::Point3d>> lines;
 	std::vector<double> ts;
-	detector.run( pointData, k, planes, lines, ts );
-	cout<<"lines number: "<<lines.size()<<endl;
-	cout<<"planes number: "<<planes.size()<<endl;
-	
-	writeOutPlanesObj( fileOut, planes, detector.scale );
-	writeOutLinesObj( fileOut, lines, detector.scale );
+	detector.run(pointData, k, planes, lines, ts);
+	cout << "lines number: " << lines.size() << endl;
+	cout << "planes number: " << planes.size() << endl;
+
+	writeOutPlanesObj(fileOut, planes, detector.scale);
+	writeOutLinesObj(fileOut, lines, detector.scale);
+
+	return 0;
 }
