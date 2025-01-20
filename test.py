@@ -1,4 +1,6 @@
 import open3d as o3d
+import random
+import numpy as np
 
 def parse_obj(file_path):
     vertices = []
@@ -15,13 +17,37 @@ def parse_obj(file_path):
                 lines.append([start, end])
     return vertices, lines
 
-def create_line_set(vertices, lines, color):
-    line_set = o3d.geometry.LineSet()
-    line_set.points = o3d.utility.Vector3dVector(vertices)
-    line_set.lines = o3d.utility.Vector2iVector(lines)
-    colors = [color for _ in range(len(lines))]
-    line_set.colors = o3d.utility.Vector3dVector(colors)
-    return line_set
+def create_cylinder(start_point, end_point, radius=0.03, resolution=20):
+    start_point = np.array(start_point)
+    end_point = np.array(end_point)
+    direction = end_point - start_point
+    length = np.linalg.norm(direction)
+    direction /= length
+
+    cylinder = o3d.geometry.TriangleMesh.create_cylinder(radius, length, resolution=resolution)
+    cylinder.paint_uniform_color([random.random(), random.random(), random.random()])
+
+    # Align cylinder with the direction vector
+    z_axis = np.array([0, 0, 1])
+    rotation_matrix = np.eye(3)
+    if not np.allclose(direction, z_axis):
+        axis = np.cross(z_axis, direction)
+        angle = np.arccos(np.dot(z_axis, direction))
+        rotation_matrix = o3d.geometry.get_rotation_matrix_from_axis_angle(axis * angle)
+
+    cylinder.rotate(rotation_matrix, center=(0, 0, 0))
+    cylinder.translate(start_point)
+
+    return cylinder
+
+def create_cylinders(vertices, lines):
+    cylinders = []
+    for line in lines:
+        start_point = vertices[line[0]]
+        end_point = vertices[line[1]]
+        cylinder = create_cylinder(start_point, end_point)
+        cylinders.append(cylinder)
+    return cylinders
 
 def parse_txt(file_path):
     points = []
@@ -32,29 +58,20 @@ def parse_txt(file_path):
             points.append([x, y, z])
     return points
 
-def visualize_lines_and_planes(planes_obj_path, lines_obj_path, txt_path):
-    # Parse planes and lines from .obj files
-    planes_vertices, planes_lines = parse_obj(planes_obj_path)
+def visualize_lines_and_planes(lines_obj_path, txt_path):
     lines_vertices, lines_lines = parse_obj(lines_obj_path)
-
-    # Parse points from .txt file
     points = parse_txt(txt_path)
 
-    # Create line sets for visualization
-    # planes_line_set = create_line_set(planes_vertices, planes_lines, [1, 0, 0])  # Red for planes
-    lines_line_set = create_line_set(lines_vertices, lines_lines, [0, 1, 0])    # Green for lines
+    cylinders = create_cylinders(lines_vertices, lines_lines)
 
-    # Create point cloud for visualization
     point_cloud = o3d.geometry.PointCloud()
     point_cloud.points = o3d.utility.Vector3dVector(points)
     point_cloud.paint_uniform_color([0.45, 0.45, 0.45])
 
-    # Visualize
-    o3d.visualization.draw_geometries([lines_line_set])
+    o3d.visualization.draw_geometries(cylinders + [point_cloud])
 
 if __name__ == "__main__":
-    planes_obj_path = r"C:\Users\Milo\OneDrive - Universiteit Utrecht\Scriptie\Data\dutch_data\Test\individual_lines\cluster_4_0-planes.obj"
-    lines_obj_path = r"C:\Users\Milo\OneDrive - Universiteit Utrecht\Scriptie\Data\dutch_data\Test\individual_lines\cluster_4_0-lines.obj"
-    txt_path = r"C:\Users\Milo\OneDrive - Universiteit Utrecht\Scriptie\Data\dutch_data\Test\individual_lines\cluster_4_0.txt"
+    lines_obj_path = r"C:\Users\Milo\OneDrive - Universiteit Utrecht\Scriptie\Data\dutch_data\Test\individual_lines\cluster_3_3-lines.obj"
+    txt_path = r"C:\Users\Milo\OneDrive - Universiteit Utrecht\Scriptie\Data\dutch_data\Test\individual_lines\cluster_3_3.txt"
 
-    visualize_lines_and_planes(planes_obj_path, lines_obj_path, txt_path)
+    visualize_lines_and_planes(lines_obj_path, txt_path)
